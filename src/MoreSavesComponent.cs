@@ -13,8 +13,15 @@ namespace MoreSaves
         private static int minPages = 2;
         private static int maxPages;
 
+        private static bool pagesHidden;
+
         private static float lastPageTransition;
         private static float transistionTime = 0.5f;
+        private static float lastInput;
+        private static float inputWindow = 0.2f;
+
+        private static bool holdingRight;
+        private static bool holdingLeft;
 
         private static bool setupHooks = false;
 
@@ -22,6 +29,10 @@ namespace MoreSaves
         {
             gm = GameManager.instance;
             uim = UIManager.instance;
+
+            pagesHidden = false;
+            holdingLeft = false;
+            holdingRight = false;
 
             maxPages = PlayerPrefs.GetInt("MaxPages", 1);
             if (maxPages < minPages)
@@ -42,34 +53,48 @@ namespace MoreSaves
         public void Update()
         {
             MoreSaves.pageLabel.enabled = uim.menuState == GlobalEnums.MainMenuState.SAVE_PROFILES;
-
-            if (uim.menuState == GlobalEnums.MainMenuState.SAVE_PROFILES && Time.time - lastPageTransition > transistionTime * 2)
+            bool updateSaves = false;
+            if (uim.menuState == GlobalEnums.MainMenuState.SAVE_PROFILES)
             {
-                bool updateSaves = false;
-                if (gm.inputHandler.inputActions.paneRight.WasPressed)
-                {
-                    currentPage++;
-                    updateSaves = true;
-                }
-                if (gm.inputHandler.inputActions.paneLeft.WasPressed)
-                {
-                    currentPage--;
-                    updateSaves = true;
-                }
-                currentPage = currentPage % maxPages;
-                if (currentPage < 0)
-                    currentPage = maxPages - 1;
+                if (gm.inputHandler.inputActions.paneLeft.WasReleased)
+                    holdingLeft = false;
+                if (gm.inputHandler.inputActions.paneRight.WasReleased)
+                    holdingRight = false;
+                if(pagesHidden || !pagesHidden && Time.time-lastPageTransition > transistionTime){
+                    if ((holdingRight && Time.time - lastInput > inputWindow/2) || gm.inputHandler.inputActions.paneRight.WasPressed)
+                    {
+                        holdingRight = true;
+                        lastInput = Time.time;
+                        currentPage++;
+                        updateSaves = true;
+                    }
+                    if ((holdingLeft && Time.time - lastInput > inputWindow/2) || gm.inputHandler.inputActions.paneLeft.WasPressed)
+                    {
+                        holdingLeft = true;
+                        lastInput = Time.time;
+                        currentPage--;
+                        updateSaves = true;               
+                    }
+                    currentPage = currentPage % maxPages;
+                    if (currentPage < 0)
+                        currentPage = maxPages - 1;
 
-                if (updateSaves)
-                {
                     MoreSaves.pageLabel.text = String.Format("Page {0}/{1}", currentPage + 1, maxPages);
-                    lastPageTransition = Time.time;
-                    //Instantly
-                    hideAllSaves();
-
-                    //After all faded
-                    Invoke("showAllSaves", transistionTime);
                 }
+            }
+
+            if (!pagesHidden && updateSaves && Time.time - lastPageTransition > transistionTime)
+            {
+                lastPageTransition = Time.time;
+                pagesHidden = true;
+                //Instantly
+                hideAllSaves();
+            }
+            if (pagesHidden && Time.time - lastInput > inputWindow && Time.time - lastPageTransition > transistionTime)
+            {
+                lastPageTransition = Time.time;
+                pagesHidden = false;
+                showAllSaves();
             }
         }
 

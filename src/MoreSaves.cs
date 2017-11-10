@@ -15,7 +15,7 @@ namespace MoreSaves
     public class MoreSaves : Mod
     {
 
-        private static string version = "0.2.0";
+        private static string version = "0.3.0";
 
         public override string GetVersion()
         {
