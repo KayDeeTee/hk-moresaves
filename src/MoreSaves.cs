@@ -15,7 +15,7 @@ namespace MoreSaves
     public class MoreSaves : Mod
     {
 
-        private static string version = "0.3.0";
+        private static string version = "0.3.9";
 
         public override string GetVersion()
         {
@@ -63,7 +63,9 @@ namespace MoreSaves
         {
             ModHooks.ModLog("Initializing MoreSaves");
 
-            UIManager.instance.gameObject.AddComponent<MoreSavesComponent>();
+            GameObject go = new GameObject();
+
+            UIManager.instance.gameObject.AddComponent<MoreSavesComponent>();     
 
             foreach (UnityEngine.Font f in UnityEngine.Resources.FindObjectsOfTypeAll<Font>())
             {
@@ -80,21 +82,21 @@ namespace MoreSaves
 
             canvas = createCanvas(1920,1080);
             pageLabel = createTextPanel(canvas, "Page 1/?", 1240, 870, 200, 200, 29).GetComponent<Text>();
-            pageLabel.enabled = false;
-
-            MonoBehaviour.DontDestroyOnLoad(canvas);
+            pageLabel.enabled = true;
+            pageLabel.CrossFadeAlpha(0, 0, true);
 
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += checkComponent;
+
+            MonoBehaviour.DontDestroyOnLoad(canvas);
 
             ModHooks.ModLog("Initialized MoreSaves");
         }
 
-        public void checkComponent(Scene scene, LoadSceneMode lsm){
-            if(UIManager.instance.gameObject.GetComponent<MoreSavesComponent>() == null)
-                UIManager.instance.gameObject.AddComponent<MoreSavesComponent>();
+        public void checkComponent(Scene s, LoadSceneMode lsm)
+        {
+            if (UIManager.instance.gameObject.GetComponent<MoreSavesComponent>() == null)
+                UIManager.instance.gameObject.AddComponent<MoreSavesComponent>();            
         }
-
-        
 
     }
 }

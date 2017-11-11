@@ -18,7 +18,13 @@ namespace MoreSaves
         private static float lastPageTransition;
         private static float transistionTime = 0.5f;
         private static float lastInput;
-        private static float inputWindow = 0.2f;
+        private static float firstInput;
+        private static float inputWindow = 0.4f;
+
+        private static float opacity = 0f;
+
+        private static int queueRight = 0;
+        private static int queueLeft = 0;
 
         private static bool holdingRight;
         private static bool holdingLeft;
@@ -34,7 +40,7 @@ namespace MoreSaves
             holdingLeft = false;
             holdingRight = false;
 
-            maxPages = PlayerPrefs.GetInt("MaxPages", 1);
+            maxPages = PlayerPrefs.GetInt("MaxPages", minPages);
             if (maxPages < minPages)
                 maxPages = minPages;
 
@@ -52,27 +58,41 @@ namespace MoreSaves
 
         public void Update()
         {
-            MoreSaves.pageLabel.enabled = uim.menuState == GlobalEnums.MainMenuState.SAVE_PROFILES;
+            float t = Time.realtimeSinceStartup;
             bool updateSaves = false;
             if (uim.menuState == GlobalEnums.MainMenuState.SAVE_PROFILES)
             {
-                if (gm.inputHandler.inputActions.paneLeft.WasReleased)
-                    holdingLeft = false;
-                if (gm.inputHandler.inputActions.paneRight.WasReleased)
-                    holdingRight = false;
-                if(pagesHidden || !pagesHidden && Time.time-lastPageTransition > transistionTime){
-                    if ((holdingRight && Time.time - lastInput > inputWindow/2) || gm.inputHandler.inputActions.paneRight.WasPressed)
+                holdingLeft = gm.inputHandler.inputActions.paneLeft.IsPressed;
+                holdingRight = gm.inputHandler.inputActions.paneRight.IsPressed;
+                if (gm.inputHandler.inputActions.paneRight.WasPressed && t - lastInput > 0.05f)
+                {
+                    firstInput = t;
+                    queueRight++;
+                }
+                if (gm.inputHandler.inputActions.paneLeft.WasPressed && t - lastInput > 0.05f)
+                {
+                    firstInput = t;
+                    queueLeft++;
+                }
+
+                if (queueRight == 0 && holdingRight && t - firstInput > inputWindow)
+                    queueRight = 1;
+                if (queueLeft == 0 && holdingLeft && t - firstInput > inputWindow)
+                    queueLeft = 1;
+
+                if(pagesHidden || !pagesHidden && t - lastPageTransition > transistionTime){
+                    if (( queueRight > 0 && t - lastInput > inputWindow/2) )
                     {
-                        holdingRight = true;
-                        lastInput = Time.time;
-                        currentPage++;
+                        lastInput = t;
+                        currentPage += queueRight;
+                        queueRight = 0;
                         updateSaves = true;
                     }
-                    if ((holdingLeft && Time.time - lastInput > inputWindow/2) || gm.inputHandler.inputActions.paneLeft.WasPressed)
+                    if ((queueLeft > 0 && t - lastInput > inputWindow / 2))
                     {
-                        holdingLeft = true;
-                        lastInput = Time.time;
-                        currentPage--;
+                        lastInput = t;
+                        currentPage-= queueLeft;
+                        queueLeft = 0;
                         updateSaves = true;               
                     }
                     currentPage = currentPage % maxPages;
@@ -82,28 +102,76 @@ namespace MoreSaves
                     MoreSaves.pageLabel.text = String.Format("Page {0}/{1}", currentPage + 1, maxPages);
                 }
             }
-
-            if (!pagesHidden && updateSaves && Time.time - lastPageTransition > transistionTime)
+            else
             {
-                lastPageTransition = Time.time;
+                MoreSaves.pageLabel.CrossFadeAlpha(0, 0.25f, false);
+            }
+
+            if (!pagesHidden && updateSaves && t - lastPageTransition > transistionTime)
+            {
+                lastPageTransition = t;
                 pagesHidden = true;
                 //Instantly
                 hideAllSaves();
             }
-            if (pagesHidden && Time.time - lastInput > inputWindow && Time.time - lastPageTransition > transistionTime)
+            if (pagesHidden && t - lastInput > inputWindow && t - lastPageTransition > transistionTime)
             {
-                lastPageTransition = Time.time;
+                lastPageTransition = t;
                 pagesHidden = false;
                 showAllSaves();
             }
+            if (t - lastPageTransition > transistionTime * 2)
+            {
+                if (pagesHidden || !(uim.slotFour.state == UnityEngine.UI.SaveSlotButton.SlotState.HIDDEN & uim.slotThree.state == UnityEngine.UI.SaveSlotButton.SlotState.HIDDEN & uim.slotTwo.state == UnityEngine.UI.SaveSlotButton.SlotState.HIDDEN & uim.slotOne.state == UnityEngine.UI.SaveSlotButton.SlotState.HIDDEN))
+                {
+                    MoreSaves.pageLabel.CrossFadeAlpha(1, 0.25f, false);
+                }
+                else
+                {
+                    MoreSaves.pageLabel.CrossFadeAlpha(0, 0.25f, false);
+                }
+            }
+        }
+
+        public void hideOne()
+        {
+            uim.slotOne.HideSaveSlot();
+        }
+        public void hideTwo()
+        {
+            uim.slotTwo.HideSaveSlot();
+        }
+        public void hideThree()
+        {
+            uim.slotThree.HideSaveSlot();
+        }
+        public void hideFour()
+        {
+            uim.slotFour.HideSaveSlot();
+        }
+        public void showOne()
+        {
+            uim.slotOne.ShowSaveSlot();
+        }
+        public void showTwo()
+        {
+            uim.slotTwo.ShowSaveSlot();
+        }
+        public void showThree()
+        {
+            uim.slotThree.ShowSaveSlot();
+        }
+        public void showFour()
+        {
+            uim.slotFour.ShowSaveSlot();
         }
 
         public void hideAllSaves()
         {
-            uim.slotOne.HideSaveSlot();
-            uim.slotTwo.HideSaveSlot();
-            uim.slotThree.HideSaveSlot();
-            uim.slotFour.HideSaveSlot();
+            Invoke("hideOne", 0 *(0.5f / 8));
+            Invoke("hideTwo", 1 * (0.5f / 8));
+            Invoke("hideThree", 2 * (0.5f / 8));
+            Invoke("hideFour", 3 * (0.5f / 8));
         }
 
         public void showAllSaves()
@@ -118,10 +186,10 @@ namespace MoreSaves
             uim.slotThree.enabled = true;
             uim.slotFour.enabled = true;
 
-            uim.slotOne.ShowSaveSlot();
-            uim.slotTwo.ShowSaveSlot();
-            uim.slotThree.ShowSaveSlot();
-            uim.slotFour.ShowSaveSlot();
+            Invoke("showOne", 0 * (0.5f / 8));
+            Invoke("showTwo", 1 * (0.5f / 8));
+            Invoke("showThree", 2 * (0.5f / 8));
+            Invoke("showFour", 3 * (0.5f / 8));
         }
 
         public static void checkAddMaxPages(int x)
