@@ -28,7 +28,6 @@ namespace MoreSaves
             DontDestroyOnLoad(this);
         }
 
-
         public void Update()
         {
             float t = Time.realtimeSinceStartup;
@@ -42,7 +41,7 @@ namespace MoreSaves
 
             bool holdingLeft = _gm.inputHandler.inputActions.paneLeft.IsPressed;
             bool holdingRight = _gm.inputHandler.inputActions.paneRight.IsPressed;
-            
+
             if (_gm.inputHandler.inputActions.paneRight.WasPressed && t - _lastInput > 0.05f)
             {
                 _firstInput = t;
@@ -78,9 +77,12 @@ namespace MoreSaves
                     updateSaves = true;
                 }
 
+                // Logger.Log("(% _maxPages) setting _currentPage to " + _currentPage % _maxPages);
                 _currentPage = _currentPage % _maxPages;
                 if (_currentPage < 0)
+                {
                     _currentPage = _maxPages - 1;
+                }
 
                 MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
             }
@@ -101,7 +103,7 @@ namespace MoreSaves
             }
 
             if (t - _lastPageTransition < TRANSISTION_TIME * 2) return;
-            
+
             if (_pagesHidden || Slots.All(x => x.state != HIDDEN))
             {
                 MoreSaves.PageLabel.CrossFadeAlpha(1, 0.25f, false);
@@ -129,7 +131,11 @@ namespace MoreSaves
         {
             Logger.Log("Showing All Saves");
             foreach (SaveSlotButton s in Slots)
+            {
                 s._prepare(_gm);
+                s.ShowRelevantModeForSaveFileState();
+            }
+
             _uim.StartCoroutine(_uim.GoToProfileMenu());
         }
 
@@ -162,6 +168,7 @@ namespace MoreSaves
 
         public static string GetFilename(int x)
         {
+            x = x % 4 == 0 ? 4 : x % 4;
             return "user" + (_currentPage * 4 + x) + ".dat";
         }
 
