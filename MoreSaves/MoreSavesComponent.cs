@@ -5,6 +5,7 @@ using System.Linq;
 using GlobalEnums;
 using ModCommon.Util;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using static UnityEngine.UI.SaveSlotButton;
 using static UnityEngine.UI.SaveSlotButton.SlotState;
@@ -26,20 +27,33 @@ namespace MoreSaves
 
             MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
             DontDestroyOnLoad(this);
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged += SceneChanged;
         }
+
+        private void OnDestroy()
+        {
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= SceneChanged;
+        }
+
+        private void SceneChanged(Scene arg0, Scene arg1) => scene = arg1.name;
+
+        private string scene = Constants.MENU_SCENE;
 
         public void Update()
         {
+            if (scene != Constants.MENU_SCENE) return;
+
             float t = Time.realtimeSinceStartup;
-            bool updateSaves = false;
 
             if (_uim.menuState != MainMenuState.SAVE_PROFILES)
             {
                 MoreSaves.PageLabel.CrossFadeAlpha(0, 0.25f, false);
+
                 return;
             }
 
-            bool holdingLeft = _gm.inputHandler.inputActions.paneLeft.IsPressed;
+            bool updateSaves  = false;
+            bool holdingLeft  = _gm.inputHandler.inputActions.paneLeft.IsPressed;
             bool holdingRight = _gm.inputHandler.inputActions.paneRight.IsPressed;
 
             if (_gm.inputHandler.inputActions.paneRight.WasPressed && t - _lastInput > 0.05f)
@@ -79,6 +93,7 @@ namespace MoreSaves
 
                 // Logger.Log("(% _maxPages) setting _currentPage to " + _currentPage % _maxPages);
                 _currentPage = _currentPage % _maxPages;
+
                 if (_currentPage < 0)
                 {
                     _currentPage = _maxPages - 1;
@@ -114,22 +129,23 @@ namespace MoreSaves
             }
         }
 
-        public void HideOne() => _uim.slotOne.HideSaveSlot();
-        public void HideTwo() => _uim.slotTwo.HideSaveSlot();
+        public void HideOne()   => _uim.slotOne.HideSaveSlot();
+        public void HideTwo()   => _uim.slotTwo.HideSaveSlot();
         public void HideThree() => _uim.slotThree.HideSaveSlot();
-        public void HideFour() => _uim.slotFour.HideSaveSlot();
+        public void HideFour()  => _uim.slotFour.HideSaveSlot();
 
         public void HideAllSaves()
         {
-            Invoke(nameof(HideOne), 0f);
-            Invoke(nameof(HideTwo), 0.0625f);
+            Invoke(nameof(HideOne),   0f);
+            Invoke(nameof(HideTwo),   0.0625f);
             Invoke(nameof(HideThree), 0.125f);
-            Invoke(nameof(HideFour), 0.1875f);
+            Invoke(nameof(HideFour),  0.1875f);
         }
 
         public void ShowAllSaves()
         {
             Logger.Log("Showing All Saves");
+
             foreach (SaveSlotButton s in Slots)
             {
                 s._prepare(_gm);
@@ -169,6 +185,7 @@ namespace MoreSaves
         public static string GetFilename(int x)
         {
             x = x % 4 == 0 ? 4 : x % 4;
+
             return "user" + (_currentPage * 4 + x) + ".dat";
         }
 
@@ -204,6 +221,7 @@ namespace MoreSaves
         private static void ChangeSaveFileState(this SaveSlotButton self, SaveFileStates nextSaveFileState)
         {
             self.saveFileState = nextSaveFileState;
+
             if (self.isActiveAndEnabled)
             {
                 self.ShowRelevantModeForSaveFileState();
@@ -219,6 +237,7 @@ namespace MoreSaves
                 if (!fileExists)
                 {
                     self.ChangeSaveFileState(SaveFileStates.Empty);
+
                     return;
                 }
 
