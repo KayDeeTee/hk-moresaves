@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using GlobalEnums;
-using InControl;
 using ModCommon.Util;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -17,6 +15,38 @@ namespace MoreSaves
 {
     internal class MoreSavesComponent : MonoBehaviour
     {
+        private const int MIN_PAGES = 2;
+
+        private const float TRANSISTION_TIME = 0.5f;
+
+        private const float INPUT_WINDOW = 0.4f;
+
+        private static int _currentPage;
+
+        private static int _maxPages;
+
+        private static bool _pagesHidden;
+
+        private static float _lastPageTransition;
+
+        private static float _lastInput;
+
+        private static float _firstInput;
+
+        private static int _queueRight;
+
+        private static int _queueLeft;
+
+        private static InputHandler _ih;
+
+        private string scene = Constants.MENU_SCENE;
+
+        private static IEnumerable<SaveSlotButton> Slots => new[] {_uim.slotOne, _uim.slotTwo, _uim.slotThree, _uim.slotFour};
+
+        private static GameManager _gm => GameManager.instance;
+
+        private static UIManager _uim => UIManager.instance;
+
         private void Start()
         {
             _pagesHidden = false;
@@ -26,9 +56,9 @@ namespace MoreSaves
             _maxPages = Math.Max(_maxPages, MIN_PAGES);
 
             MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
-            
+
             DontDestroyOnLoad(this);
-            
+
             UnityEngine.SceneManagement.SceneManager.activeSceneChanged += SceneChanged;
         }
 
@@ -37,16 +67,14 @@ namespace MoreSaves
             UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= SceneChanged;
         }
 
-        private void SceneChanged(Scene arg0, Scene arg1) => scene = arg1.name;
-
-        private string scene = Constants.MENU_SCENE;
+        private void SceneChanged(Scene arg0, Scene arg1)
+        {
+            scene = arg1.name;
+        }
 
         public void Update()
         {
-            if (scene != Constants.MENU_SCENE)
-            {
-                return;
-            }
+            if (scene != Constants.MENU_SCENE) return;
 
             float t = Time.realtimeSinceStartup;
 
@@ -103,10 +131,7 @@ namespace MoreSaves
 
                 _currentPage %= _maxPages;
 
-                if (_currentPage < 0)
-                {
-                    _currentPage = _maxPages - 1;
-                }
+                if (_currentPage < 0) _currentPage = _maxPages - 1;
 
                 MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
             }
@@ -129,19 +154,30 @@ namespace MoreSaves
             if (t - _lastPageTransition < TRANSISTION_TIME * 2) return;
 
             if (_pagesHidden || Slots.All(x => x.state != HIDDEN))
-            {
                 MoreSaves.PageLabel.CrossFadeAlpha(1, 0.25f, false);
-            }
             else
-            {
                 MoreSaves.PageLabel.CrossFadeAlpha(0, 0.25f, false);
-            }
         }
 
-        public void HideOne()   => _uim.slotOne.HideSaveSlot();
-        public void HideTwo()   => _uim.slotTwo.HideSaveSlot();
-        public void HideThree() => _uim.slotThree.HideSaveSlot();
-        public void HideFour()  => _uim.slotFour.HideSaveSlot();
+        public void HideOne()
+        {
+            _uim.slotOne.HideSaveSlot();
+        }
+
+        public void HideTwo()
+        {
+            _uim.slotTwo.HideSaveSlot();
+        }
+
+        public void HideThree()
+        {
+            _uim.slotThree.HideSaveSlot();
+        }
+
+        public void HideFour()
+        {
+            _uim.slotFour.HideSaveSlot();
+        }
 
         public void HideAllSaves()
         {
@@ -164,14 +200,9 @@ namespace MoreSaves
             _uim.StartCoroutine(_uim.GoToProfileMenu());
         }
 
-        private static IEnumerable<SaveSlotButton> Slots => new[] {_uim.slotOne, _uim.slotTwo, _uim.slotThree, _uim.slotFour};
-
         public static void CheckAddMaxPages(int x)
         {
-            if (_currentPage == _maxPages - 1)
-            {
-                _maxPages++;
-            }
+            if (_currentPage == _maxPages - 1) _maxPages++;
 
             PlayerPrefs.SetInt("MaxPages", _maxPages);
         }
@@ -181,9 +212,7 @@ namespace MoreSaves
             bool flag = false;
 
             if (_currentPage == _maxPages || _currentPage == _maxPages - 1)
-            {
                 flag = Enumerable.Range(1, 8).Any(i => File.Exists($"{Application.persistentDataPath}/user{(_maxPages - 1) * 4 + i}.dat"));
-            }
 
             if (flag) return;
 
@@ -197,34 +226,6 @@ namespace MoreSaves
 
             return "user" + (_currentPage * 4 + x) + ".dat";
         }
-
-        private static GameManager _gm => GameManager.instance;
-
-        private static UIManager _uim => UIManager.instance;
-
-        private static int _currentPage;
-
-        private const int MIN_PAGES = 2;
-
-        private static int _maxPages;
-
-        private static bool _pagesHidden;
-
-        private static float _lastPageTransition;
-
-        private const float TRANSISTION_TIME = 0.5f;
-
-        private static float _lastInput;
-
-        private static float _firstInput;
-
-        private const float INPUT_WINDOW = 0.4f;
-
-        private static int _queueRight;
-
-        private static int _queueLeft;
-
-        private static InputHandler _ih;
     }
 
     internal static class SaveExtensions
@@ -233,10 +234,7 @@ namespace MoreSaves
         {
             self.saveFileState = nextSaveFileState;
 
-            if (self.isActiveAndEnabled)
-            {
-                self.ShowRelevantModeForSaveFileState();
-            }
+            if (self.isActiveAndEnabled) self.ShowRelevantModeForSaveFileState();
         }
 
         public static void _prepare(this SaveSlotButton self, GameManager gameManager)

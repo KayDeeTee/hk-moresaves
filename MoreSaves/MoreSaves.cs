@@ -10,6 +10,20 @@ namespace MoreSaves
     [UsedImplicitly]
     public class MoreSaves : Mod
     {
+        private const string VERSION = "0.4.2";
+
+        private static GameObject _canvas;
+
+        public static Text PageLabel;
+
+        private static Image _imageLeft;
+
+        private static Image _imageRight;
+
+        private static Text _textLeft;
+
+        private static Text _textRight;
+
         public override string GetVersion()
         {
             return VERSION;
@@ -87,19 +101,5 @@ namespace MoreSaves
             _textLeft.CrossFadeAlpha(0f, t, true);
             _textRight.CrossFadeAlpha(0f, t, true);
         }
-
-        private const string VERSION = "0.4.2";
-
-        private static GameObject _canvas;
-
-        public static Text PageLabel;
-
-        private static Image _imageLeft;
-
-        private static Image _imageRight;
-
-        private static Text _textLeft;
-
-        private static Text _textRight;
     }
 }
