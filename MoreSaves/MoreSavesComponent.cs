@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using GlobalEnums;
+using InControl;
 using ModCommon.Util;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -17,8 +19,6 @@ namespace MoreSaves
     {
         private void Start()
         {
-            _gm = GameManager.instance;
-            _uim = UIManager.instance;
             _pagesHidden = false;
 
             _maxPages = PlayerPrefs.GetInt("MaxPages", MIN_PAGES);
@@ -26,7 +26,9 @@ namespace MoreSaves
             _maxPages = Math.Max(_maxPages, MIN_PAGES);
 
             MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
+            
             DontDestroyOnLoad(this);
+            
             UnityEngine.SceneManagement.SceneManager.activeSceneChanged += SceneChanged;
         }
 
@@ -41,7 +43,10 @@ namespace MoreSaves
 
         public void Update()
         {
-            if (scene != Constants.MENU_SCENE) return;
+            if (scene != Constants.MENU_SCENE)
+            {
+                return;
+            }
 
             float t = Time.realtimeSinceStartup;
 
@@ -52,17 +57,22 @@ namespace MoreSaves
                 return;
             }
 
-            bool updateSaves  = false;
-            bool holdingLeft  = _gm.inputHandler.inputActions.paneLeft.IsPressed;
-            bool holdingRight = _gm.inputHandler.inputActions.paneRight.IsPressed;
+            _ih = _ih ? _ih : _uim.GetAttr<UIManager, InputHandler>("ih");
 
-            if (_gm.inputHandler.inputActions.paneRight.WasPressed && t - _lastInput > 0.05f)
+            HeroActions heroActions = _ih.inputActions;
+
+            bool updateSaves = false;
+
+            bool holdingLeft = heroActions.paneLeft.IsPressed;
+            bool holdingRight = heroActions.paneRight.IsPressed;
+
+            if (heroActions.paneRight.WasPressed && t - _lastInput > 0.05f)
             {
                 _firstInput = t;
                 _queueRight++;
             }
 
-            if (_gm.inputHandler.inputActions.paneLeft.WasPressed && t - _lastInput > 0.05f)
+            if (heroActions.paneLeft.WasPressed && t - _lastInput > 0.05f)
             {
                 _firstInput = t;
                 _queueLeft++;
@@ -91,8 +101,7 @@ namespace MoreSaves
                     updateSaves = true;
                 }
 
-                // Logger.Log("(% _maxPages) setting _currentPage to " + _currentPage % _maxPages);
-                _currentPage = _currentPage % _maxPages;
+                _currentPage %= _maxPages;
 
                 if (_currentPage < 0)
                 {
@@ -136,15 +145,15 @@ namespace MoreSaves
 
         public void HideAllSaves()
         {
-            Invoke(nameof(HideOne),   0f);
-            Invoke(nameof(HideTwo),   0.0625f);
+            Invoke(nameof(HideOne), 0f);
+            Invoke(nameof(HideTwo), 0.0625f);
             Invoke(nameof(HideThree), 0.125f);
-            Invoke(nameof(HideFour),  0.1875f);
+            Invoke(nameof(HideFour), 0.1875f);
         }
 
         public void ShowAllSaves()
         {
-            Logger.Log("Showing All Saves");
+            Logger.Log("[MoreSaves] Showing All Saves");
 
             foreach (SaveSlotButton s in Slots)
             {
@@ -189,9 +198,9 @@ namespace MoreSaves
             return "user" + (_currentPage * 4 + x) + ".dat";
         }
 
-        private static GameManager _gm;
+        private static GameManager _gm => GameManager.instance;
 
-        private static UIManager _uim;
+        private static UIManager _uim => UIManager.instance;
 
         private static int _currentPage;
 
@@ -214,6 +223,8 @@ namespace MoreSaves
         private static int _queueRight;
 
         private static int _queueLeft;
+
+        private static InputHandler _ih;
     }
 
     internal static class SaveExtensions
