@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using GlobalEnums;
 using ModCommon.Util;
+using Modding;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -21,27 +22,30 @@ namespace MoreSaves
 
         private const float INPUT_WINDOW = 0.4f;
 
-        private static int _currentPage;
+        private int _currentPage;
 
-        private static int _maxPages;
+        private int _maxPages;
 
-        private static bool _pagesHidden;
+        private bool _pagesHidden;
 
-        private static float _lastPageTransition;
+        private float _lastPageTransition;
 
-        private static float _lastInput;
+        private float _lastInput;
 
-        private static float _firstInput;
+        private float _firstInput;
 
-        private static int _queueRight;
+        private int _queueRight;
 
-        private static int _queueLeft;
+        private int _queueLeft;
 
-        private static InputHandler _ih;
+        private InputHandler _ih;
 
         private string scene = Constants.MENU_SCENE;
 
-        private static IEnumerable<SaveSlotButton> Slots => new[] {_uim.slotOne, _uim.slotTwo, _uim.slotThree, _uim.slotFour};
+        private static IEnumerable<SaveSlotButton> Slots => new[]
+        {
+            _uim.slotOne, _uim.slotTwo, _uim.slotThree, _uim.slotFour
+        };
 
         private static GameManager _gm => GameManager.instance;
 
@@ -59,12 +63,15 @@ namespace MoreSaves
 
             DontDestroyOnLoad(this);
 
-            UnityEngine.SceneManagement.SceneManager.activeSceneChanged += SceneChanged;
-        }
-
-        private void OnDestroy()
-        {
             UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= SceneChanged;
+            ModHooks.Instance.GetSaveFileNameHook -= GetFilename;
+            ModHooks.Instance.SavegameSaveHook -= CheckAddMaxPages;
+            ModHooks.Instance.SavegameClearHook -= CheckRemoveMaxPages;
+
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged += SceneChanged;
+            ModHooks.Instance.GetSaveFileNameHook += GetFilename;
+            ModHooks.Instance.SavegameSaveHook += CheckAddMaxPages;
+            ModHooks.Instance.SavegameClearHook += CheckRemoveMaxPages;
         }
 
         private void SceneChanged(Scene arg0, Scene arg1)
@@ -140,7 +147,6 @@ namespace MoreSaves
             {
                 _lastPageTransition = t;
                 _pagesHidden = true;
-                //Instantly
                 HideAllSaves();
             }
 
@@ -181,10 +187,10 @@ namespace MoreSaves
 
         public void HideAllSaves()
         {
-            Invoke(nameof(HideOne), 0f);
-            Invoke(nameof(HideTwo), 0.0625f);
-            Invoke(nameof(HideThree), 0.125f);
-            Invoke(nameof(HideFour), 0.1875f);
+            Invoke(nameof(HideOne), 0);
+            Invoke(nameof(HideTwo), 0);
+            Invoke(nameof(HideThree), 0);
+            Invoke(nameof(HideFour), 0);
         }
 
         public void ShowAllSaves()
@@ -200,27 +206,27 @@ namespace MoreSaves
             _uim.StartCoroutine(_uim.GoToProfileMenu());
         }
 
-        public static void CheckAddMaxPages(int x)
+        private void CheckAddMaxPages(int x)
         {
             if (_currentPage == _maxPages - 1) _maxPages++;
 
             PlayerPrefs.SetInt("MaxPages", _maxPages);
         }
 
-        public static void CheckRemoveMaxPages(int x)
+        private void CheckRemoveMaxPages(int x)
         {
-            bool flag = false;
-
-            if (_currentPage == _maxPages || _currentPage == _maxPages - 1)
-                flag = Enumerable.Range(1, 8).Any(i => File.Exists($"{Application.persistentDataPath}/user{(_maxPages - 1) * 4 + i}.dat"));
-
-            if (flag) return;
+            if
+            (
+                (_currentPage == _maxPages || _currentPage == _maxPages - 1) &&
+                Enumerable.Range(1, 8).Any(i => File.Exists($"{Application.persistentDataPath}/user{(_maxPages - 1) * 4 + i}.dat"))
+            )
+                return;
 
             PlayerPrefs.SetInt("MaxPages", --_maxPages);
             MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
         }
 
-        public static string GetFilename(int x)
+        private string GetFilename(int x)
         {
             x = x % 4 == 0 ? 4 : x % 4;
 
