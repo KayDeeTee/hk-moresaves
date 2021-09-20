@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -40,6 +41,8 @@ namespace MoreSaves
 
         private InputHandler _ih;
 
+        private SaveSlotButton _selectedSaveSlot;
+
         private string scene = Constants.MENU_SCENE;
 
         private static IEnumerable<SaveSlotButton> Slots => new[]
@@ -67,11 +70,49 @@ namespace MoreSaves
             ModHooks.Instance.GetSaveFileNameHook -= GetFilename;
             ModHooks.Instance.SavegameSaveHook -= CheckAddMaxPages;
             ModHooks.Instance.SavegameClearHook -= CheckRemoveMaxPages;
+            On.UnityEngine.UI.SaveSlotButton.OnSelect -= this.SaveSlotButton_OnSelect;
+            On.UnityEngine.UI.SaveSlotButton.OnDeselect -= this.SaveSlotButton_OnDeselect;
+            On.UnityEngine.UI.SaveSlotButton.AnimateToSlotState -= SaveSlotButton_AnimateToSlotState;
 
+
+            On.UnityEngine.UI.SaveSlotButton.AnimateToSlotState += SaveSlotButton_AnimateToSlotState;
+            On.UnityEngine.UI.SaveSlotButton.OnDeselect += this.SaveSlotButton_OnDeselect;
+            On.UnityEngine.UI.SaveSlotButton.OnSelect += this.SaveSlotButton_OnSelect;
             UnityEngine.SceneManagement.SceneManager.activeSceneChanged += SceneChanged;
             ModHooks.Instance.GetSaveFileNameHook += GetFilename;
             ModHooks.Instance.SavegameSaveHook += CheckAddMaxPages;
             ModHooks.Instance.SavegameClearHook += CheckRemoveMaxPages;
+        }
+
+        private IEnumerator SaveSlotButton_AnimateToSlotState(On.UnityEngine.UI.SaveSlotButton.orig_AnimateToSlotState orig, SaveSlotButton self, SlotState nextState)
+        {
+            yield return orig(self, nextState);
+
+            //probably a better way to wait for the transition to end but good enough TM
+            yield return new WaitForSeconds(0.8f);
+
+            string filepath = Application.persistentDataPath + GetLockFilename((int)self.saveSlot);
+            if (File.Exists(filepath))
+            {
+                self.clearSaveButton.alpha = 0;
+                self.clearSaveButton.interactable = false;
+                self.clearSaveButton.gameObject.SetActive(false);
+                self.StartCoroutine(_uim.FadeOutCanvasGroup(self.clearSaveButton));
+            }
+            
+            yield break;
+        }
+
+        private void SaveSlotButton_OnDeselect(On.UnityEngine.UI.SaveSlotButton.orig_OnDeselect orig, SaveSlotButton self, UnityEngine.EventSystems.BaseEventData eventData)
+        {
+            _selectedSaveSlot = null;
+            orig(self, eventData);
+        }
+
+        private void SaveSlotButton_OnSelect(On.UnityEngine.UI.SaveSlotButton.orig_OnSelect orig, SaveSlotButton self, UnityEngine.EventSystems.BaseEventData eventData)
+        {
+            _selectedSaveSlot = self;
+            orig(self, eventData);
         }
 
         private void SceneChanged(Scene arg0, Scene arg1)
@@ -100,6 +141,25 @@ namespace MoreSaves
 
             bool holdingLeft = heroActions.paneLeft.IsPressed;
             bool holdingRight = heroActions.paneRight.IsPressed;
+            bool pressedDN = heroActions.dreamNail.WasPressed;
+
+            if (pressedDN)
+            {
+                if(_selectedSaveSlot != null)
+                {
+                    string filepath = Application.persistentDataPath + GetLockFilename((int)_selectedSaveSlot.saveSlot);
+                    if (File.Exists(filepath))
+                    {
+                        _selectedSaveSlot.StartCoroutine(_uim.FadeInCanvasGroup(_selectedSaveSlot.clearSaveButton));
+                        File.Delete(filepath);
+                    } else
+                    {
+                        _selectedSaveSlot.StartCoroutine(_uim.FadeOutCanvasGroup(_selectedSaveSlot.clearSaveButton));
+                        FileStream fs = File.Create(filepath);
+                        fs.Close();
+                    }
+                }
+            }
 
             if (heroActions.paneRight.WasPressed && t - _lastInput > 0.05f)
             {
@@ -224,6 +284,13 @@ namespace MoreSaves
 
             PlayerPrefs.SetInt("MaxPages", --_maxPages);
             MoreSaves.PageLabel.text = $"Page {_currentPage + 1}/{_maxPages}";
+        }
+
+        private string GetLockFilename(int x)
+        {
+            x = x % 4 == 0 ? 4 : x % 4;
+
+            return "/user" + (_currentPage * 4 + x) + ".protecc";
         }
 
         private string GetFilename(int x)

@@ -10,7 +10,7 @@ namespace MoreSaves
     [UsedImplicitly]
     public class MoreSaves : Mod
     {
-        private const string VERSION = "0.4.2";
+        private const string VERSION = "0.4.3";
 
         private static GameObject _canvas;
 
